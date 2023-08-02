@@ -19,13 +19,10 @@ def laser_catcher_skins(ctx: Context):
         for out in ent.outputs:
             if has_act and has_deact:
                 break
-            if out.target == name or out.target == '!self':
+            if out.target in [name, '!self']:
                 if out.input.casefold() == 'skin':
                     if out.params == act_skin:
                         has_act = True
-                    elif out.params == act_skin:
-                        has_act = True
-
         if not has_act:
             ent.add_out(Output('OnPowered', '!self', 'Skin', act_skin))
         if not has_deact:

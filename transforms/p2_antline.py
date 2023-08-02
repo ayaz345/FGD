@@ -59,19 +59,20 @@ def comp_antlines(ctx: Context):
 
         for ind_ent in ctx.vmf.search(ind_name):
             cls = ind_ent['classname']
-            if cls == 'info_overlay_accessor':
+            if (
+                cls == 'info_overlay_accessor'
+                or cls != 'info_overlay_accessor'
+                and cls != 'prop_indicator_panel'
+                and cls != 'env_texturetoggle'
+                and ind_ent['model'].startswith('*')
+            ):
                 ind_set = ind_overlays
             elif cls == 'prop_indicator_panel':
                 if not ind_ent['indicatorlights']:
                     unused_panels.append(ind_ent)
-                if ind_ent['istimer'] == '1':
-                    ind_set = ind_panel_tim
-                else:
-                    ind_set = ind_panel_check
+                ind_set = ind_panel_tim if ind_ent['istimer'] == '1' else ind_panel_check
             elif cls == 'env_texturetoggle':
                 ind_set = ind_toggles
-            elif ind_ent['model'].startswith('*'):  # Brush model index
-                ind_set = ind_overlays
             else:
                 LOGGER.warning(
                     'Invalid indicator entity "{}" @ {}!',

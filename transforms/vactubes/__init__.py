@@ -155,19 +155,18 @@ def vactube_transform(ctx: Context) -> None:
         if isinstance(node, nodes.Destroyer):
             continue
         for dest_type in node.out_types:
-            override = node.ent[dest_type.manual_targ]
-            if override:
+            if override := node.ent[dest_type.manual_targ]:
                 try:
                     target = name_to_node[override.casefold()]
                 except KeyError:
                     raise ValueError(f'Unknown node target "{override}" for node {node}!')
                 LOGGER.debug('Override: {} -> {}', node.name, target.name)
             else:
-                target = find_closest(
-                norm_inputs,
-                node,
-                dest_type,
-            )
+                    target = find_closest(
+                    norm_inputs,
+                    node,
+                    dest_type,
+                )
             node.outputs[dest_type] = target
 
             # Mark the node as having an input, for sanity checking purposes.
@@ -181,14 +180,13 @@ def vactube_transform(ctx: Context) -> None:
                     f'Node {node} uses group "{node.group}", '
                     'which has no objects registered!'
                 )
-                if '' in groups:
-                    # Fall back to ignoring the group, using the default
-                    # blank one which is present.
-                    LOGGER.warning("{} Using blank group.", group_warn)
-                    node.group = ""
-                else:
+                if '' not in groups:
                     raise ValueError(group_warn)
 
+                # Fall back to ignoring the group, using the default
+                # blank one which is present.
+                LOGGER.warning("{} Using blank group.", group_warn)
+                node.group = ""
     # Run through them again, check to see if any miss inputs.
     for node in all_nodes:
         if not node.has_input:
@@ -215,24 +213,26 @@ def vactube_transform(ctx: Context) -> None:
 
     with TemporaryDirectory(prefix='vactubes_') as temp_dir:
         # Make the reference mesh.
-        with open(temp_dir + '/ref.smd', 'wb') as f:
+        with open(f'{temp_dir}/ref.smd', 'wb') as f:
             Mesh.build_bbox('root', 'demo', Vec(-32, -32, -32), Vec(32, 32, 32)).export(f)
 
-        with open(temp_dir + '/prop.qc', 'w') as qc_file:
+        with open(f'{temp_dir}/prop.qc', 'w') as qc_file:
             qc_file.write(QC_TEMPLATE.format(path=anim_mdl_name))
 
             for i, anim in enumerate(all_anims):
                 anim.name = anim_name = f'anim_{i:03x}'
                 qc_file.write(SEQ_TEMPLATE.format(name=anim_name, fps=animations.FPS))
 
-                with open(temp_dir + f'/{anim_name}.smd', 'wb') as f:
+                with open(f'{temp_dir}/{anim_name}.smd', 'wb') as f:
                     anim.mesh.export(f)
 
         args = [
             str(ctx.studiomdl),
-            '-nop4', '-i',  # Ignore warnings.
-            '-game', str(ctx.game.path),
-            temp_dir + '/prop.qc',
+            '-nop4',
+            '-i',
+            '-game',
+            str(ctx.game.path),
+            f'{temp_dir}/prop.qc',
         ]
         LOGGER.info('Compiling vactube animations {}...', args)
         subprocess.run(args)
@@ -298,7 +298,7 @@ def vactube_transform(ctx: Context) -> None:
         if start_node.is_auto:
             spawn_timer = ctx.vmf.create_ent(
                 'logic_timer',
-                targetname=spawn_name + '_timer',
+                targetname=f'{spawn_name}_timer',
                 origin=start_node.origin,
                 startdisabled='0',
                 userandomtime='1',

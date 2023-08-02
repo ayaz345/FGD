@@ -37,14 +37,11 @@ class VacObject:
         self.skin_drop = skin_drop
 
     def __repr__(self) -> str:
-        return '<Vac Object "{}">'.format(os.path.basename(self.model_vac))
+        return f'<Vac Object "{os.path.basename(self.model_vac)}">'
 
     def make_code(self) -> str:
         """Generate the code to construct this object in VScript."""
-        if self.model_drop:
-            model_code = f'"{self.model_drop}"'
-        else:
-            model_code = 'null'
+        model_code = f'"{self.model_drop}"' if self.model_drop else 'null'
         return (
             f'{self.id} <- obj("{self.model_vac}", {self.skin_vac}, '
             f'{model_code}, {self.weight}, "{self.offset}", {self.skin_tv});'

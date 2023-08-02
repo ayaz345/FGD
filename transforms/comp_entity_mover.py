@@ -14,9 +14,8 @@ def comp_entity_mover(ctx: Context):
     for mover in ctx.vmf.by_class['comp_entity_mover']:
         mover.remove()
 
-        ref_name = mover['reference']
         offset = Vec()
-        if ref_name:
+        if ref_name := mover['reference']:
             for ent in ctx.vmf.search(ref_name):
                 offset = Vec.from_str(mover['origin']) - Vec.from_str(ent['origin'])
                 offset *= conv_float(mover['distance'])

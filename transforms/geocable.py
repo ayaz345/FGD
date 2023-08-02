@@ -359,7 +359,7 @@ class Node:
     def find_start(self) -> 'Node':
         """Find the start of this chain, or return self if it's a loop."""
         node = self
-        while node.prev is not None and node.prev is not self:
+        while node.prev is not None and node.prev is not node:
             node = node.prev
         return node
 
@@ -545,16 +545,10 @@ def interpolate_catmull_rom(node1: Node, node2: Node, seg_count: int) -> List[No
     """Interpolate a spline curve, matching Valve's implementation."""
     # If no points are found, extrapolate out the line.
     diff = (node2.pos - node1.pos).norm()
-    if node1.prev is None:
-        p0 = node1.pos - diff
-    else:
-        p0 = node1.prev.pos
+    p0 = node1.pos - diff if node1.prev is None else node1.prev.pos
     p1 = node1.pos
     p2 = node2.pos
-    if node2.next is None:
-        p3 = node2.pos + diff
-    else:
-        p3 = node2.next.pos
+    p3 = node2.pos + diff if node2.next is None else node2.next.pos
     t0 = 0
     t1 = t0 + (p1-p0).mag()
     t2 = t1 + (p2-p1).mag()
@@ -607,7 +601,7 @@ def interpolate_rope(node1: Node, node2: Node, seg_count: int) -> List[Node]:
     # Valve uses 3 iterations, but they only ever have 10 subdivisions.
     # More causes the springs to fail and start sagging, so increase the
     # iteration to compensate if you use more.
-    constraint_iter = range(max(6, int(seg_count/2)))
+    constraint_iter = range(max(6, seg_count // 2))
     LOGGER.debug('Solving rope slack for {} nodes with {} spring iterations...', seg_count, constraint_iter)
 
     # Start/end doesn't move.
@@ -656,7 +650,7 @@ def interpolate_all(nodes: Set[Node]) -> None:
             continue
         node2 = node1.next
         interp_type = node1.config.interp
-        func = globals()['interpolate_' + interp_type.name.casefold()]
+        func = globals()[f'interpolate_{interp_type.name.casefold()}']
         points = func(node1, node2, node1.config.segments)
 
         for a, b in zip(points, points[1:]):
@@ -746,10 +740,7 @@ def compute_verts(nodes: Iterable[Node], bone: Bone, is_coll: bool) -> None:
             v_end = v_start + config.v_scale * (node2.pos - node1.pos).mag()
             # For collisions, adjust the normal so that it points away from the
             # midpoint.
-            if is_coll:
-                coll_off = (node2.pos - node1.pos) / 2.0
-            else:
-                coll_off = Vec()
+            coll_off = (node2.pos - node1.pos) / 2.0 if is_coll else Vec()
             for i in range(count):
                 ang = lerp(i, 0, count, 0, 2*math.pi)
                 local = Vec(0, math.cos(ang), math.sin(ang))

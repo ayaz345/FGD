@@ -33,25 +33,16 @@ def sceneset(ctx: Context):
 
         start_ent = None
 
-        name = ent['targetname'] or '_choreo_{}'.format(ent.id)
+        name = ent['targetname'] or f'_choreo_{ent.id}'
         for i, scene in enumerate(scenes):
             part = ctx.vmf.create_ent(
                 classname='logic_choreographed_scene',
-                targetname=(
-                    '{}_{}'.format(name, i)
-                    if i > 0 else
-                    name
-                ),
+                targetname=f'{name}_{i}' if i > 0 else name,
                 origin=ent['origin'],
                 scenefile=scene,
             )
             if i + 1 < len(scenes):
-                part.add_out(Output(
-                    'OnCompletion',
-                    '{}_{}'.format(name, i+1),
-                    'Start',
-                    delay=delay,
-                ))
+                part.add_out(Output('OnCompletion', f'{name}_{i + 1}', 'Start', delay=delay))
             if only_once:
                 # When started blank the name so it can't be triggered,
                 # then clean up after finished
