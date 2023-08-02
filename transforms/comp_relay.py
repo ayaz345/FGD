@@ -21,14 +21,14 @@ def comp_relay(ctx: Context):
     }
     # Add user outputs as well.
     for i in '12345678':
-        out_names['onuser' + i] = 'fireuser' + i
+        out_names[f'onuser{i}'] = f'fireuser{i}'
 
     for relay in ctx.vmf.by_class['comp_relay']:
         # First, see if any entities exist with the same name that aren't
         # comp_relays. In that case, we need to keep the inputs.
         relay_name = relay['targetname']
-        should_remove = not any(
-            ent['classname'].casefold() != 'comp_relay'
+        should_remove = all(
+            ent['classname'].casefold() == 'comp_relay'
             for ent in ctx.vmf.by_target[relay_name]
         )
         # If ctrl_type is 0, ctrl_value needs to be 1 to be enabled.

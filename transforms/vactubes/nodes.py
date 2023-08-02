@@ -94,7 +94,7 @@ class Node(ABC):
         self.has_pass = bool(pass_outputs)
         if self.has_pass:
             for out in pass_outputs:
-                out.output = 'On' + PASS_OUT
+                out.output = f'On{PASS_OUT}'
             if ent['classname'].startswith('comp_'):
                 # Remove the extra keyvalues we use.
                 ent.keys = {
@@ -113,12 +113,7 @@ class Node(ABC):
         return self.ent['targetname']
 
     def __repr__(self) -> str:
-        return '<{} "{}" @ {}, {}>'.format(
-            self.__class__.__name__,
-            self.name,
-            self.origin,
-            self.matrix.to_angle(),
-        )
+        return f'<{self.__class__.__name__} "{self.name}" @ {self.origin}, {self.matrix.to_angle()}>'
 
     @abstractmethod
     def path_len(self, dest: DestType=DestType.PRIMARY) -> float:
@@ -410,18 +405,12 @@ class Curve(Node):
         return self.origin + Vec(0, x, -y) @ self.matrix
 
     def input_norm(self) -> Vec:
-        if self.reversed:
-            return Vec(z=1) @ self.matrix
-        else:
-            return Vec(y=1) @ self.matrix
+        return Vec(z=1) @ self.matrix if self.reversed else Vec(y=1) @ self.matrix
 
     def output_norm(self, dest: DestType=DestType.PRIMARY) -> Vec:
         """Return the flow direction at the end of this curve type."""
         assert dest is DestType.PRIMARY
-        if self.reversed:
-            return Vec(y=-1) @ self.matrix
-        else:
-            return Vec(z=-1) @ self.matrix
+        return Vec(y=-1) @ self.matrix if self.reversed else Vec(z=-1) @ self.matrix
 
 
 class DiagCurve(Node):
@@ -575,12 +564,8 @@ class Splitter(Node):
         """Return the flow direction at the end of this curve type."""
         if dest is DestType.SECONDARY:
             return Vec(x=1) @ self.matrix
-        else:
-            assert dest is DestType.PRIMARY
-            if self.is_straight:
-                return Vec(y=1) @ self.matrix
-            else:
-                return Vec(x=-1) @ self.matrix
+        assert dest is DestType.PRIMARY
+        return Vec(y=1) @ self.matrix if self.is_straight else Vec(x=-1) @ self.matrix
 
 
 class CrossSplitter(Node):
@@ -595,10 +580,7 @@ class CrossSplitter(Node):
         super().__init__(ent)
 
     def path_len(self, dest: DestType=DestType.PRIMARY) -> float:
-        if dest is DestType.SECONDARY:  # Straight through
-            return 128.0
-        else: # Either curve
-            return 64.0 / 4.0 * math.pi
+        return 128.0 if dest is DestType.SECONDARY else 64.0 / 4.0 * math.pi
 
     def vec_point(self, t: float, dest: DestType=DestType.PRIMARY) -> Vec:
         """Return the position this far through the given curve."""

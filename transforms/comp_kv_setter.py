@@ -37,10 +37,7 @@ def kv_setter(ctx: Context) -> None:
             kv_value = '0' if conv_bool(kv_value) else '1'
         if conv_bool(setter['rotate']):
             pos = Vec.from_str(kv_value).rotate_by_str(setter['angles'])
-            if conv_bool(setter['conv_ang']):  # Save converting back and forth.
-                kv_value = str(pos.to_angle())
-            else:
-                kv_value = str(pos)
+            kv_value = str(pos.to_angle()) if conv_bool(setter['conv_ang']) else str(pos)
         elif conv_bool(setter['conv_ang']):
             kv_value = str(Vec.from_str(kv_value).to_angle())
 

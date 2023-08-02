@@ -2,6 +2,7 @@
 
 This allows sharing definitions among different engine versions.
 """
+
 import html
 import os
 import sys
@@ -69,8 +70,8 @@ ALL_TAGS = set()  # type: Set[str]
 ALL_TAGS.update(GAME_ORDER)
 ALL_TAGS.update(ALL_FEATURES)
 ALL_TAGS.update(TAGS_SPECIAL)
-ALL_TAGS.update('SINCE_' + t.upper() for t in GAME_ORDER)
-ALL_TAGS.update('UNTIL_' + t.upper() for t in GAME_ORDER)
+ALL_TAGS.update(f'SINCE_{t.upper()}' for t in GAME_ORDER)
+ALL_TAGS.update(f'UNTIL_{t.upper()}' for t in GAME_ORDER)
 
 
 # If the tag is present, run to backport newer FGD syntax to older engines.
@@ -117,17 +118,7 @@ def _polyfill_ext_valuetypes(fgd: FGD) -> None:
 def format_all_tags() -> str:
     """Append a formatted description of all allowed tags to a message."""
     
-    return (
-        '- Games: {}\n'
-        '- SINCE_<game>\n'
-        '- UNTIL_<game>\n'
-        '- Features: {}\n'
-        '- Special: {}\n'
-     ).format(
-         ', '.join(GAME_ORDER),
-         ', '.join(ALL_FEATURES),
-        ', '.join(TAGS_SPECIAL),
-     )
+    return f"- Games: {', '.join(GAME_ORDER)}\n- SINCE_<game>\n- UNTIL_<game>\n- Features: {', '.join(ALL_FEATURES)}\n- Special: {', '.join(TAGS_SPECIAL)}\n"
 
 
 def expand_tags(tags: FrozenSet[str]) -> FrozenSet[str]:
@@ -146,14 +137,8 @@ def expand_tags(tags: FrozenSet[str]) -> FrozenSet[str]:
         except ValueError:
             pass
         else:
-            exp_tags.update(
-                'SINCE_' + tag 
-                for tag in GAME_ORDER[:pos+1]
-            )
-            exp_tags.update(
-                'UNTIL_' + tag 
-                for tag in GAME_ORDER[pos+1:]
-            )
+            exp_tags.update(f'SINCE_{tag}' for tag in GAME_ORDER[:pos+1])
+            exp_tags.update(f'UNTIL_{tag}' for tag in GAME_ORDER[pos+1:])
     return frozenset(exp_tags)
 
 
@@ -166,15 +151,11 @@ def ent_path(ent: EntityDef) -> str:
     if ent.type is EntityTypes.BASE:
         folder = 'bases'
     else:
-        if ent.type is EntityTypes.BRUSH:
-            folder = 'brush'
-        else:
-            folder = 'point'
-
+        folder = 'brush' if ent.type is EntityTypes.BRUSH else 'point'
         if '_' in ent.classname:
             folder += '/' + ent.classname.split('_', 1)[0]
 
-    return '{}/{}.fgd'.format(folder, ent.classname)
+    return f'{folder}/{ent.classname}.fgd'
 
 
 def load_database(dbase: Path, extra_loc: Path=None, fgd_vis: bool=False) -> Tuple[FGD, EntityDef]:
@@ -346,8 +327,7 @@ def get_appliesto(ent: EntityDef) -> List[str]:
 
     if pos is None:
         pos = 0
-    arg_list = list(map(str.upper, applies_to))
-    arg_list.sort()
+    arg_list = sorted(map(str.upper, applies_to))
     ent.helpers[:] = [
         helper for helper in ent.helpers
         if not isinstance(helper, HelperExtAppliesTo)
@@ -365,13 +345,9 @@ def get_clean_fgd(
 ) -> FGD:
     """Gets a clean FGD, after tag expansion, optimization, mat exclusions, and culling incompatible entities, unused bases, and visgroups."""
 
-    if engine_mode:
-        tags = frozenset({'ENGINE'})
-    else:
-        tags = expand_tags(tags)
-
+    tags = frozenset({'ENGINE'}) if engine_mode else expand_tags(tags)
     if verbose:
-        print('Tags expanded to: {}'.format(', '.join(tags)))
+        print(f"Tags expanded to: {', '.join(tags)}")
 
     fgd, base_entity_def = load_database(dbase, extra_db)
 
@@ -420,10 +396,7 @@ def get_clean_fgd(
                     for tags, value in orig_tag_map.items():
                         if 'ENGINE' in tags or '+ENGINE' in tags:
                             if value.type is ValueTypes.CHOICES:
-                                raise ValueError(
-                                    '{}.{}: Engine tags cannot be '
-                                    'CHOICES!'.format(ent.classname, key)
-                                )
+                                raise ValueError(f'{ent.classname}.{key}: Engine tags cannot be CHOICES!')
                             # Use just this.
                             tag_map = {'': value}
                             break
@@ -442,11 +415,9 @@ def get_clean_fgd(
                         # IODef and KeyValues have a type attr.
                         types = {val.type for val in tag_map.values()}
                         if len(types) > 1 and verbose:
-                            print('{}.{} has multiple types! ({})'.format(
-                                ent.classname,
-                                key,
-                                ', '.join([typ.value for typ in types])
-                            ))
+                            print(
+                                f"{ent.classname}.{key} has multiple types! ({', '.join([typ.value for typ in types])})"
+                            )
                         # Pick the one with shortest tags arbitrarily.
                         _, value = min(
                             tag_map.items(),
@@ -457,11 +428,7 @@ def get_clean_fgd(
                     # Guess either int or string, if we can convert.
                     if value.type is ValueTypes.CHOICES:
                         if verbose:
-                            print(
-                                '{}.{} uses CHOICES type, '
-                                'provide ENGINE '
-                                'tag!'.format(ent.classname, key)
-                            )
+                            print(f'{ent.classname}.{key} uses CHOICES type, provide ENGINE tag!')
                         if isinstance(value, KeyValues):
                             assert value.val_list is not None
                             try:
@@ -562,9 +529,7 @@ def get_clean_fgd(
             if isinstance(helper, HelperExtAppliesTo):
                 continue
 
-            # For each, check if it makes earlier ones obsolete.
-            overrides = helper.overrides()
-            if overrides:
+            if overrides := helper.overrides():
                 ent.helpers[:] = [
                     helper for helper in ent.helpers
                     if helper.TYPE not in overrides
@@ -630,7 +595,7 @@ def collapse_bases(
 ) -> List[EntityDef | str]:
     """Collapses all bases into one list."""
 
-    if len(bases) == 0:
+    if not bases:
         return bases
 
     acc_bases = []
@@ -653,9 +618,9 @@ def add_tag(tags: FrozenSet[str], new_tag: str) -> FrozenSet[str]:
         tag_set.discard(new_tag[1:])
         tag_set.add(new_tag)
     else:
-        tag_set.discard('!' + new_tag.upper())
-        tag_set.discard('-' + new_tag.upper())
-        if ('+' + new_tag.upper()) not in tag_set:
+        tag_set.discard(f'!{new_tag.upper()}')
+        tag_set.discard(f'-{new_tag.upper()}')
+        if f'+{new_tag.upper()}' not in tag_set:
             tag_set.add(new_tag.upper())
 
     return frozenset(tag_set)
@@ -829,20 +794,19 @@ def action_import(
 ) -> None:
     """Import an FGD file, adding differences to the unified files."""
     new_fgd = FGD()
-    print('Using tag "{}"'.format(engine_tag))
+    print(f'Using tag "{engine_tag}"')
 
     expanded = expand_tags(frozenset({engine_tag}))
 
-    print('Reading {} FGDs:'.format(len(fgd_paths)))
+    print(f'Reading {len(fgd_paths)} FGDs:')
     for path in fgd_paths:
         print(path)
         with RawFileSystem(str(path.parent)) as fsys:
             new_fgd.parse_file(fsys, fsys[path.name], eval_bases=False)
 
-    print('\nImporting {} entiti{}...'.format(
-        len(new_fgd),
-        "y" if len(new_fgd) == 1 else "ies",
-    ))
+    print(
+        f'\nImporting {len(new_fgd)} entiti{"y" if len(new_fgd) == 1 else "ies"}...'
+    )
     for new_ent in new_fgd:
         path = dbase / ent_path(new_ent)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -859,7 +823,7 @@ def action_import(
 
             if new_ent.desc not in ent.desc:
                 # Temporary, append it.
-                ent.desc += '|||' + new_ent.desc
+                ent.desc += f'|||{new_ent.desc}'
 
             # Merge helpers. We just combine overall...
             for new_base in new_ent.bases:
@@ -906,7 +870,7 @@ def action_import(
                 for name, tag_map in cur_map.items():
                     if name not in new_names:
                         cur_map[name] = {
-                            add_tag(tag, '!' + engine_tag): value
+                            add_tag(tag, f'!{engine_tag}'): value
                             for tag, value in tag_map.items()
                         }
 
@@ -1036,7 +1000,7 @@ def action_exportmd(
             os.mkdir(full_folder_path)
         except OSError as _error:
             pass
-        
+
         sf_info_header = [
             '## Spawnflags\n'
             '| Num | Desc | Default | Inherited from |\n'
@@ -1058,12 +1022,9 @@ def action_exportmd(
             '--- | --- | --- | --- |\n'
         ]
 
-        ent_out_path = Path(full_folder_path, '{}.md'.format(ent.classname))
+        ent_out_path = Path(full_folder_path, f'{ent.classname}.md')
         with open(ent_out_path, 'w+') as txt_f:
-            txt_info : List[str] = []
-            txt_info.append('# {}\n'.format(ent.classname))
-            txt_info.append(html.escape('{}\n'.format(ent.desc)))
-
+            txt_info: List[str] = [f'# {ent.classname}\n', html.escape(f'{ent.desc}\n')]
             sf_info : List[str] = []
             kv_info : List[str] = []
             input_info : List[str] = []
@@ -1072,7 +1033,7 @@ def action_exportmd(
             # Combine the bases into this for a full kv listing in the entity
             entities = collapse_bases(ent.bases)
             entities.append(ent) # So bases are listed first, with the entity's own info last
-            
+
             for entity in entities:
 
                 dervied_class = '' if entity.classname == ent.classname else entity.classname
@@ -1096,8 +1057,8 @@ def action_exportmd(
                             disp_type = ''
                             for idx, choice in enumerate(kv.choices_list):
                                 if choice[0] == kv.default:
-                                    default_value = '{} ({})'.format(choice[1], kv.default)
-                                
+                                    default_value = f'{choice[1]} ({kv.default})'
+
                                 disp_type += ('<br/>{}: {}' if idx != 0 else '{}: {}').format(choice[0], choice[1])
                         else:
                             disp_type = kv.type.value
@@ -1115,22 +1076,22 @@ def action_exportmd(
                         escaped_desc = html.escape(output.desc).replace('\n', '<br/>')
                         output_info.append('|{dname}|{type}|{desc}|{basename}|\n'.format(dname=output.name, type=output.type.value, desc=escaped_desc, basename=dervied_class))
 
-            if len(sf_info) > 0:
+            if sf_info:
                 sf_info.append(separator)
                 txt_info += sf_info_header + sf_info
-            
-            if len(kv_info) > 0:
+
+            if kv_info:
                 kv_info.append(separator)
                 txt_info += kv_info_header + kv_info
 
-            if len(input_info) > 0:
+            if input_info:
                 input_info.append(separator)
                 txt_info += input_info_header + input_info
-                
-            if len(output_info) > 0:
+
+            if output_info:
                 output_info.append(separator)
                 txt_info += output_info_header + output_info
-            
+
             txt_f.writelines(txt_info)
             
 
@@ -1257,11 +1218,7 @@ def main(args: List[str]=None):
     dbase = Path(result.database).resolve()
     dbase.mkdir(parents=True, exist_ok=True)
 
-    if result.extra_db is not None:
-        extra_db = Path(result.extra_db).resolve()  # type: Optional[Path]
-    else:
-        extra_db = None
-
+    extra_db = None if result.extra_db is None else Path(result.extra_db).resolve()
     if result.mode in ("import", "imp", "i"):
         action_import(
             dbase,
@@ -1277,15 +1234,12 @@ def main(args: List[str]=None):
             result.tags = ['ENGINE']
         elif not result.tags:
             parser.error("At least one tag must be specified!")
-            
+
         tags = validate_tags(result.tags)
-        
+
         for tag in tags:
             if tag not in ALL_TAGS:
-                parser.error(
-                    'Invalid tag "{}"! Allowed tags: \n'.format(tag) +
-                    format_all_tags()
-                )
+                parser.error(f'Invalid tag "{tag}"! Allowed tags: \n{format_all_tags()}')
         action_export(
             dbase,
             extra_db,
@@ -1297,16 +1251,13 @@ def main(args: List[str]=None):
     elif result.mode in ("exportmd", "expmd"):
         if not result.tags:
             parser.error("At least one tag must be specified!")
-        
+
         tags = validate_tags(result.tags)
-        
+
         for tag in tags:
             if tag not in ALL_TAGS:
-                parser.error(
-                    'Invalid tag "{}"! Allowed tags: \n'.format(tag) +
-                    format_all_tags()
-                )
-        
+                parser.error(f'Invalid tag "{tag}"! Allowed tags: \n{format_all_tags()}')
+
         action_exportmd(
             dbase,
             tags,
@@ -1318,7 +1269,7 @@ def main(args: List[str]=None):
     elif result.mode in ("visgroup", "v", "vis"):
         action_visgroup(dbase, extra_db, result.output)
     else:
-        raise AssertionError("Unknown mode! (" + result.mode + ")")
+        raise AssertionError(f"Unknown mode! ({result.mode})")
 
 
 if __name__ == '__main__':

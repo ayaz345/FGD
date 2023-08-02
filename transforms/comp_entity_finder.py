@@ -65,7 +65,7 @@ def entity_finder(ctx: Context):
                     targ_ref,
                     finder['origin'],
                 )
-        if len(targ_classes) == 0:
+        if not targ_classes:
             LOGGER.warning(
                 'Entity finder at <{}> has no '
                 'classname specified.',
@@ -123,11 +123,11 @@ def entity_finder(ctx: Context):
             del targ_ent
             if found_ent is None:
                 # Convert the set of classes to a nice string.
-                if len(targ_classes) == 0:
+                if not targ_classes:
                     cls_desc = ''
                 elif len(targ_classes) == 1:
                     [single_class] = targ_classes
-                    cls_desc = single_class + ' '
+                    cls_desc = f'{single_class} '
                 else:
                     [*first_classes, last_class] = sorted(targ_classes)
                     cls_desc = '{} or {}'.format(

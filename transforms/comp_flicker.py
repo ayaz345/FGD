@@ -61,8 +61,7 @@ def comp_flicker(ctx: Context) -> None:
             else:
                 LOGGER.warning('Unknown comp_flicker output "{}" for "{}"', out.output, ent_name)
 
-        mdl_name = ent['target_mdl']
-        if mdl_name:
+        if mdl_name := ent['target_mdl']:
             ent.add_out(
                 Output(OUT_TURN_ON, mdl_name, 'Skin', ent['mdl_skin_on']),
                 Output(OUT_TURN_OFF, mdl_name, 'Skin', ent['mdl_skin_off']),

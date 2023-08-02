@@ -17,7 +17,7 @@ MODES: dict[str, Callable[[Entity, Entity, FGD], str]] = {}
 
 def vs_vec(vec: Vec) -> str:
     """Convert the provided Vec into a VScript Vector constructor code."""
-    return 'Vector({})'.format(vec.join())
+    return f'Vector({vec.join()})'
 
 
 def squirrel_string(val: str) -> str:
@@ -41,33 +41,32 @@ class VarData:
 
     def make_code(self) -> str:
         """Generate the code for setting this."""
-        if self.is_array:
-            # First build an array big enough to fit everything.
-            array: list[Optional[str]] = [None] * (
-                max(self.specified_pos.keys(), default=0) + 1 +
-                len(self.extra_pos)
-            )
-
-            for ind, value in self.specified_pos.items():
-                array[ind] = value
-
-            # Then insert each extra value in at the first space that fits.
-            # Use the start parameter to skip values we know are None.
-            ind = 0
-            for value in sorted(self.extra_pos):
-                ind = array.index(None, ind)
-                array[ind] = value
-
-            # Strip any overallocated Nones at the end.
-            while array[-1] is None:
-                array.pop()
-
-            return '[\n{}\n]'.format(', \n'.join([
-                '\t null' if x is None else '\t' + x
-                for x in array
-            ]))
-        else:
+        if not self.is_array:
             return self.scalar
+        # First build an array big enough to fit everything.
+        array: list[Optional[str]] = [None] * (
+            max(self.specified_pos.keys(), default=0) + 1 +
+            len(self.extra_pos)
+        )
+
+        for ind, value in self.specified_pos.items():
+            array[ind] = value
+
+        # Then insert each extra value in at the first space that fits.
+        # Use the start parameter to skip values we know are None.
+        ind = 0
+        for value in sorted(self.extra_pos):
+            ind = array.index(None, ind)
+            array[ind] = value
+
+        # Strip any overallocated Nones at the end.
+        while array[-1] is None:
+            array.pop()
+
+        return '[\n{}\n]'.format(', \n'.join([
+            '\t null' if x is None else '\t' + x
+            for x in array
+        ]))
 
 
 @trans('comp_scriptvar_setter')
@@ -94,8 +93,7 @@ def comp_scriptvar(ctx: Context):
         else:
             ent_list = [None]
 
-        parsed_match = re.fullmatch(r'\s*([^[]+)\[([0-9]*)]\s*', var_name)
-        if parsed_match:
+        if parsed_match := re.fullmatch(r'\s*([^[]+)\[([0-9]*)]\s*', var_name):
             var_name, index_str = parsed_match.groups()
             if index_str:
                 try:
@@ -119,9 +117,8 @@ def comp_scriptvar(ctx: Context):
             )
             continue
 
-        ref_name = comp_ent['ref']
         ref_ent = comp_ent
-        if ref_name:
+        if ref_name := comp_ent['ref']:
             for ref_ent in ctx.vmf.search(ref_name):
                 break
             else:
@@ -177,18 +174,15 @@ def comp_scriptvar(ctx: Context):
                 continue
             if index is Ellipsis:
                 var_data.extra_pos.add(code)
-            else:
-                # Allow duplicates that write the exact same thing,
-                # as a special case.
-                if var_data.specified_pos.get(index, code) != code:
-                    LOGGER.warning(
-                        "comp_scriptvar at {} can't "
-                        'overwrite {}[{}] on the entity "{}"!',
-                        comp_ent['origin'], var_name, index, comp_ent['target'],
-                    )
-                else:
-                    var_data.specified_pos[index] = code
+            elif var_data.specified_pos.get(index, code) == code:
+                var_data.specified_pos[index] = code
 
+            else:
+                LOGGER.warning(
+                    "comp_scriptvar at {} can't "
+                    'overwrite {}[{}] on the entity "{}"!',
+                    comp_ent['origin'], var_name, index, comp_ent['target'],
+                )
         if not ent_list:
             # No targets?
             LOGGER.warning(
@@ -198,9 +192,10 @@ def comp_scriptvar(ctx: Context):
             )
 
     for ent, var_dict in set_vars.items():
-        full_code = []
-        for var_name, var_data in var_dict.items():
-            full_code.append(f'{"::" if ent is None else ""}{var_name} <- {var_data.make_code()};')
+        full_code = [
+            f'{"::" if ent is None else ""}{var_name} <- {var_data.make_code()};'
+            for var_name, var_data in var_dict.items()
+        ]
         if full_code:
             if ent is not None:
                 ctx.add_code(ent, '\n'.join(full_code))
@@ -218,7 +213,7 @@ def mode_const(comp_ent: Entity, ent: Entity, fgd: FGD) -> str:
 
 def mode_string(comp_ent: Entity, ent: Entity, fgd: FGD) -> str:
     """Set a constant, as a string."""
-    return '"{}"'.format(comp_ent['const'])
+    return f""""{comp_ent['const']}\""""
 
 
 def mode_bool(comp_ent: Entity, ent: Entity, fgd: FGD) -> str:
@@ -233,19 +228,16 @@ def mode_inv_bool(comp_ent: Entity, ent: Entity, fgd: FGD) -> str:
 
 def mode_name(comp_ent: Entity, ent: Entity, fgd: FGD) -> str:
     """Set the value to the entity name."""
-    return '"{}"'.format(ent['targetname'])
+    return f""""{ent['targetname']}\""""
 
 
 def mode_handle(comp_ent: Entity, ent: Entity, fgd: FGD) -> str:
     """Compute and return a handle to this entity."""
     if ent['targetname']:
-        return 'Entities.FindByName(null, "{}")'.format(ent['targetname'])
+        return f"""Entities.FindByName(null, "{ent['targetname']}")"""
     else:
         # No name, use classname and position.
-        return 'Entities.FindByClassnameWithin(null, "{}", {}, 1)'.format(
-            ent['classname'],
-            vs_vec(Vec.from_str(ent['origin']))
-        )
+        return f"""Entities.FindByClassnameWithin(null, "{ent['classname']}", {vs_vec(Vec.from_str(ent['origin']))}, 1)"""
 
 
 def mode_keyvalue(comp_ent: Entity, ent: Entity, fgd: FGD) -> str:

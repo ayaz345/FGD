@@ -13,8 +13,7 @@ DIGIT_PATTERN = re.compile('[0-9]+')
 
 def num_suffix(ent: Entity) -> int:
     """Find numbers at the end of the name, and then parse the number."""
-    numbers = DIGIT_PATTERN.findall(ent['targetname'])
-    if numbers:
+    if numbers := DIGIT_PATTERN.findall(ent['targetname']):
         return int(numbers[-1])
     else:
         return 0

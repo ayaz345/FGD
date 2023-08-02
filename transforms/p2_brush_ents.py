@@ -11,17 +11,17 @@ def comp_trigger_coop(ctx: Context):
     for trig in ctx.vmf.by_class['comp_trigger_coop']:
         trig['classname'] = 'trigger_playerteam'
         trig['target_team'] = 0
-        
+
         only_once = conv_bool(trig['trigger_once'])
         trig['trigger_once'] = 0
-        
+
         trig_name = trig['targetname']
         if not trig_name:
             # Give it something unique
             trig['targetname'] = trig_name = '_comp_trigger_coop_' + str(trig['hammer_id'])
-            
-        man_name = trig_name + '_man'
-        
+
+        man_name = f'{trig_name}_man'
+
         manager = ctx.vmf.create_ent(
             classname='logic_coop_manager',
             origin=trig['origin'],
@@ -45,7 +45,7 @@ def comp_trigger_coop(ctx: Context):
             Output('OnEndTouchBluePlayer', man_name, 'SetStateAFalse'),
             Output('OnEndTouchOrangePlayer', man_name, 'SetStateBFalse'),
         )
-        
+
         if only_once:
             manager.add_out(
                 Output('OnChangeToAllTrue', man_name, 'Kill'),
@@ -72,9 +72,7 @@ def comp_trigger_goo(ctx: Context):
         trig.outputs.clear()
 
         failsafe_delay = conv_float(trig['failsafe_delay'], 0.5)
-        if failsafe_delay < 0.01:
-            failsafe_delay = 0.01
-
+        failsafe_delay = max(failsafe_delay, 0.01)
         hurt = trig.copy()
         diss = trig.copy()
         ctx.vmf.add_ents([hurt, diss])

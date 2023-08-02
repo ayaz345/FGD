@@ -1,4 +1,5 @@
 """Generate entity sprite text images."""
+
 from pathlib import Path
 
 from PIL import Image
@@ -32,6 +33,6 @@ for ch in chars:
     img.alpha_composite(ch.img, (offset, 0))
     offset += ch.width
 
-img.save(text + '.png')
+img.save(f'{text}.png')
 
 print('Done!')
